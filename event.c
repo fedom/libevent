@@ -1992,10 +1992,14 @@ event_add_internal(struct event *ev, const struct timeval *tv,
 	if ((ev->ev_events & (EV_READ|EV_WRITE|EV_SIGNAL)) &&
 	    !(ev->ev_flags & (EVLIST_INSERTED|EVLIST_ACTIVE))) {
 		if (ev->ev_events & (EV_READ|EV_WRITE))
+            /*io事件添加到base的epoll监控列表中*/
 			res = evmap_io_add(base, ev->ev_fd, ev);
 		else if (ev->ev_events & EV_SIGNAL)
+            /*Signal事件添加到base的epoll监控列表中*/
 			res = evmap_signal_add(base, (int)ev->ev_fd, ev);
+
 		if (res != -1)
+            /*事件添加到event_base的管理队列的pending队列(EVLIST_INSERTED)中*/
 			event_queue_insert(base, ev, EVLIST_INSERTED);
 		if (res == 1) {
 			/* evmap says we need to notify the main thread. */
@@ -2493,6 +2497,7 @@ event_queue_insert(struct event_base *base, struct event *ev, int queue)
 {
 	EVENT_BASE_ASSERT_LOCKED(base);
 
+    // 已经在相应的队列插入过则不再重复插入（ev->ev_flags位标记已插入的队列）
 	if (ev->ev_flags & queue) {
 		/* Double insertion is possible for active events */
 		if (queue & EVLIST_ACTIVE)
@@ -2503,16 +2508,20 @@ event_queue_insert(struct event_base *base, struct event *ev, int queue)
 		return;
 	}
 
+    // 非EVLIST_INTERNAL类型的事件才计数
 	if (~ev->ev_flags & EVLIST_INTERNAL)
 		base->event_count++;
 
+    // 将要插入相应类型的队列，标志置位
 	ev->ev_flags |= queue;
 	switch (queue) {
 	case EVLIST_INSERTED:
 		TAILQ_INSERT_TAIL(&base->eventqueue, ev, ev_next);
 		break;
 	case EVLIST_ACTIVE:
+        // 活动event计数
 		base->event_count_active++;
+        // 活动队列是一个队列数组，每一个队列元素对应一个优先级，索引越小优先级越高
 		TAILQ_INSERT_TAIL(&base->activequeues[ev->ev_pri],
 		    ev,ev_active_next);
 		break;

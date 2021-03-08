@@ -98,6 +98,7 @@ struct event {
 		/* used for io events */
 		struct {
 			TAILQ_ENTRY(event) ev_io_next;
+            // record the timeout duration while the event->ev_timeout below is already converted to absolute time.
 			struct timeval ev_timeout;
 		} ev_io;
 

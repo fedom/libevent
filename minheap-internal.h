@@ -38,6 +38,7 @@
 typedef struct min_heap
 {
 	struct event** p;
+    // a is the capacity, n is the actual size
 	unsigned n, a;
 } min_heap_t;
 
